@@ -14,13 +14,13 @@ if not db.exists("watched"):
 if not db.exists("favs"):
     db.lcreate("favs")
 
-def get_all_channel_ids():
+def get_all_channels():
     return db.lgetall('channels')
 
 
-def save_channel_id(channel_id):
-    if not db.lexists('channels', channel_id):
-        db.ladd('channels', channel_id)
+def save_channel(channel):
+    if not db.lexists('channels', channel):
+        db.ladd('channels', channel)
 
 def have_watched(video):
     return db.lexists('watched', video)
@@ -29,3 +29,6 @@ def save_to_watched(videos):
     for video in videos:
         if not db.lexists('watched', video):
             db.ladd('watched', video)
+
+def pop_from_list(list_name, pos):
+    return db.lpop(list_name, pos)
