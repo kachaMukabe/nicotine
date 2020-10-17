@@ -58,10 +58,24 @@ def get_channel_details(channel_id):
     else:
         return None
 
-def get_videos(channel_id):
+def get_videos(channel_id, num_of_videos=1):
     # Disable OAuthlib's HTTPS verification when running locally.
     # *DO NOT* leave this option enabled in production.
     uploads_id = get_channel_uploads_id(channel_id)
-    uploads = get_uploads(uploads_id)
+    uploads = get_uploads(uploads_id, num_of_videos)
     return uploads
+
+def search_youtube(query):
+    request = youtube.search().list(
+        part="snippet",
+        q=query
+    )
+
+    response = request.execute()
+    if response["pageInfo"]["resultsPerPage"] >= 1:
+        return response["items"]
+    else:
+        return []
+
+
     

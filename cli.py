@@ -3,11 +3,20 @@ import os
 import random
 import questionary
 from db.db import get_all_channels, save_channel, have_watched, save_to_watched, pop_from_list
-from youtube.youtube import get_videos, get_channel_details
+from youtube.youtube import get_videos, get_channel_details, search_youtube
 
 @click.group()
 def cli():
     pass
+
+@click.command()
+@click.argument('query', nargs=-1)
+def search(query):
+    results = search_youtube(query)
+    watch = questionary.select("Watch search result", [f"{video['snippet']['title']}\n  {video['snippet']['channelTitle']}" for video in results]).ask()
+    to_watch = [video for video in results if video["snippet"]["title"] == watch]
+    watch(to_watch)
+    click.echo(watch)
 
 @click.command()
 @click.argument('ids', nargs=-1)
@@ -33,25 +42,31 @@ def latest():
 
 @click.command()
 def channels():
-    echo = get_all_channels()
-    click.echo(len(echo))
+    channels = get_all_channels()
+    channel_choices = questionary.checkbox("Select channels to watch", [channel["name"] for channel in channels]).ask()
+    selected_channels = [channel for channel in channels if channel["name"] in channel_choices]
+    videos = []
+    for channel in selected_channels:
+        # click.echo(channel["channel_id"])
+        videos = videos + get_videos(channel["channel_id"])
+    videos = [video for video in videos if not have_watched(video)]
+    watch(videos)
+
 
 @click.command()
 @click.option('--count', default=5, help="Number of videos to watch")
-def gumbo(count):
+@click.option('--vids', default=1, help="Number of videos to display")
+def gumbo(count, vids):
 
     channels = get_all_channels()
-    gumbo = random.sample(channels, 18 if len(channels) > 5 else len(channels) )
+    gumbo = random.sample(channels, count if count <= len(channels) else len(channels)  )
     
     videos = []
     for channel in gumbo:
-        # click.echo(channel["channel_id"])
         videos = videos + get_videos(channel["channel_id"])
-    # click.echo(videos)
+    videos = [video for video in videos if not have_watched(video)]
     vid_choices = questionary.checkbox("Select Videos", [video["title"] for video in videos]).ask()
-    click.echo(vid_choices)
     to_watch = [video for video in videos if video["title"] in vid_choices]
-    click.echo(to_watch)
     watch(to_watch)
 
 def watch(videos):
@@ -89,7 +104,7 @@ cli.add_command(save)
 cli.add_command(gumbo)
 cli.add_command(channels)
 
-cli.add_command(latest)
+cli.add_command(search)
 
 if __name__ == "__main__":
     cli()
