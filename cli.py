@@ -13,10 +13,11 @@ def cli():
 @click.argument('query', nargs=-1)
 def search(query):
     results = search_youtube(query)
-    watch = questionary.select("Watch search result", [f"{video['snippet']['title']}\n  {video['snippet']['channelTitle']}" for video in results]).ask()
-    to_watch = [video for video in results if video["snippet"]["title"] == watch]
+    selected = questionary.select("Watch search result", [f"{video['snippet']['title']}\n  {video['snippet']['channelTitle']}" for video in results]).ask()
+    title = selected.split('\n')[0]
+    to_watch = [{"title": video["snippet"]["title"], "videoId": video["id"]["videoId"]} for video in results if video["snippet"]["title"] == title]
     watch(to_watch)
-    click.echo(watch)
+    click.echo(to_watch)
 
 @click.command()
 @click.argument('ids', nargs=-1)
@@ -41,14 +42,13 @@ def latest():
     click.echo(choice)
 
 @click.command()
-def channels():
+@click.option('--vids', default=1, help="Number of videos to display")
+def channels(vids):
     channels = get_all_channels()
     channel_choices = questionary.checkbox("Select channels to watch", [channel["name"] for channel in channels]).ask()
     selected_channels = [channel for channel in channels if channel["name"] in channel_choices]
     videos = []
-    for channel in selected_channels:
-        # click.echo(channel["channel_id"])
-        videos = videos + get_videos(channel["channel_id"])
+    videos = get_videos([channel["channel_id"] for channel in selected_channels], vids)
     videos = [video for video in videos if not have_watched(video)]
     watch(videos)
 
@@ -56,18 +56,20 @@ def channels():
 @click.command()
 @click.option('--count', default=5, help="Number of videos to watch")
 @click.option('--vids', default=1, help="Number of videos to display")
-def gumbo(count, vids):
+def patch(count, vids):
 
     channels = get_all_channels()
     gumbo = random.sample(channels, count if count <= len(channels) else len(channels)  )
     
     videos = []
-    for channel in gumbo:
-        videos = videos + get_videos(channel["channel_id"])
+    videos = get_videos([channel["channel_id"] for channel in gumbo], vids)
     videos = [video for video in videos if not have_watched(video)]
-    vid_choices = questionary.checkbox("Select Videos", [video["title"] for video in videos]).ask()
-    to_watch = [video for video in videos if video["title"] in vid_choices]
-    watch(to_watch)
+    if len(videos) > 0:
+        vid_choices = questionary.checkbox("Select Videos", [video["title"] for video in videos]).ask()
+        to_watch = [video for video in videos if video["title"] in vid_choices]
+        watch(to_watch)
+    else:
+        click.echo("All Videos watched")
 
 def watch(videos):
     if len(videos) > 0:
@@ -84,26 +86,15 @@ def watch(videos):
 
 ## DEV COMMANDS
 @click.command()
-def update_channels():
+def test():
     channels = get_all_channels()
-    mod_channels = []
-    for i in range(len(channels)): 
-        channel = pop_from_list("channels", i)
-        details = get_channel_details(channel)
-        title = details["snippet"]["title"]
-        channel_details = {
-            "name": title,
-            "channel_id": channel,
-            "tag": "gen"
-        }
-        mod_channels.append(channel_details)
-    for channel_id in mod_channels:
-        save_channel(channel_id)
+    click.echo(channels)
+
 
 cli.add_command(save)
-cli.add_command(gumbo)
+cli.add_command(patch)
 cli.add_command(channels)
-
+cli.add_command(test)
 cli.add_command(search)
 
 if __name__ == "__main__":

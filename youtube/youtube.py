@@ -18,19 +18,20 @@ DEVELOPER_KEY = os.environ["YOUTUBE_API_KEY"]
 youtube = googleapiclient.discovery.build(
     api_service_name, api_version, developerKey = DEVELOPER_KEY)
 
-def get_channel_uploads_id(channel_id):
+def get_channel_uploads_id(channel_ids):
     
 
     request = youtube.channels().list(
         part="contentDetails",
-        id=channel_id
+        id=", ".join([channel_id for channel_id in channel_ids])
     )
     response = request.execute()
     
     if response["pageInfo"]["resultsPerPage"] >= 1:
-        return response["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+        playlists = [item["contentDetails"]["relatedPlaylists"]["uploads"] for item in response["items"]]
+        return playlists
     else:
-        return None
+        return []
 
 def get_uploads(uploads_id, num_of_videos=1):
     request = youtube.playlistItems().list(
@@ -58,11 +59,13 @@ def get_channel_details(channel_id):
     else:
         return None
 
-def get_videos(channel_id, num_of_videos=1):
+def get_videos(channel_ids, num_of_videos=1):
     # Disable OAuthlib's HTTPS verification when running locally.
     # *DO NOT* leave this option enabled in production.
-    uploads_id = get_channel_uploads_id(channel_id)
-    uploads = get_uploads(uploads_id, num_of_videos)
+    uploads_ids = get_channel_uploads_id(channel_ids)
+    uploads = []
+    for upload_id in uploads_ids:
+        uploads = uploads + get_uploads(upload_id, num_of_videos)
     return uploads
 
 def search_youtube(query):

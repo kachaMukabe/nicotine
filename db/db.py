@@ -2,8 +2,8 @@ from tinydb import TinyDB, Query
 import pickledb
 import os
 # db = TinyDB('db.json')
-
-db = pickledb.load('yt.db', True)
+path = os.path.join(os.path.abspath('.'), 'yt.db')
+db = pickledb.load(path, True)
 
 if not db.exists("channels"):
     db.lcreate("channels")
